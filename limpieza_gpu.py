@@ -11,7 +11,7 @@ import re
 import csv
 import argparse
 
-COLUMNAS = ["city", "speedKMH", "type", "uuid", "startNode", "endNode", "speed", "severity", "level", "blockType", "length", "turnType", "roadType", "delay", "updateMillis", "pubMillis", "tiempo_min", "tiempo_max"]
+COLUMNAS = ["city", "speedKMH", "uuid", "endNode", "speed", "severity", "level", "length", "roadType", "delay", "updateMillis", "pubMillis", "tiempo_min", "tiempo_max"]
 
 def encontrar_archivo(archivos: list[str], byte: int):
     tams = [os.stat(archivo).st_size for archivo in archivos]
