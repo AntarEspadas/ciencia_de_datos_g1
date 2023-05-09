@@ -67,7 +67,7 @@ def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("input", nargs="+", help="Lista o glob de archivos en formato JSON para procesar")
     parser.add_argument("--output", "-o", required=True, help="Archivo de salida")
-    parser.add_argument("--tam-bloque", "-b", default=2000, type=int, help="Los archivos se leeran en bloques del tamaño especificado. Unidad: MB")
+    parser.add_argument("--tam-bloque", "-b", default=1500, type=int, help="Los archivos se leeran en bloques del tamaño especificado. Disminuir este valor si se producen errores de memoria. Unidad: MB")
     parser.add_argument("--columnas", "-c", default=COLUMNAS, nargs="+", help="Las columnas que se de desea conservar")
     return parser
 
