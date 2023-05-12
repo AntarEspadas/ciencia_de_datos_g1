@@ -11,7 +11,7 @@ import re
 import csv
 import argparse
 
-COLUMNAS = ["city", "speedKMH", "uuid", "endNode", "speed", "severity", "level", "length", "roadType", "delay", "updateMillis", "pubMillis", "tiempo_min", "tiempo_max"]
+COLUMNAS = ["city", "speedKMH", "uuid", "endNode", "speed", "severity", "level", "length", "roadType", "delay", "updateMillis", "pubMillis"]
 
 def encontrar_archivo(archivos: list[str], byte: int):
     tams = [os.stat(archivo).st_size for archivo in archivos]
@@ -79,7 +79,7 @@ def main():
     entrada: list[str] = args.input
     archivo_salida: str = args.output
     tam_max: int = args.tam_bloque * 1_000_000
-    columnas: list[str] = args.columnas
+    columnas: list[str] = args.columnas + ["tiempo_min", "tiempo_max", "x1", "y1", "x2", "y2"]
 
     archivos = sum(map(glob, entrada), [])
 
