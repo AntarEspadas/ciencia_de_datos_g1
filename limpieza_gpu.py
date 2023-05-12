@@ -56,6 +56,14 @@ def procesar_parcial(archivos: list[str], archivo_salida: str, columnas):
 
     # Pegar la información de tiempo de vuelta en el dataframe original
     df = df.merge(tiempos, how="left", on="uuid")
+
+    # Separar la información de georeferencia en 4 columnas: x1, x2, y1, y2
+    line = df["line"].list
+    df.drop(inplace=True, columns="line")
+    df = df.join(line.get(0).struct.explode())
+    df.rename(columns={"x": "x1", "y": "y1"}, inplace=True)
+    df = df.join(line.get(-1).struct.explode())
+    df.rename(columns={"x": "x2", "y": "y2"}, inplace=True)
     
     # Eliminar columnas no requeridas
     df = df.loc[:, columnas]
@@ -122,8 +130,8 @@ def main():
 
     df = df.merge(tiempos, how="left", on="uuid")
 
-    with open(archivo_salida + "-2", "w") as f:
-        df.to_csv(f, columns=columnas, index=False)
+    with open(archivo_salida, "w") as f:
+        df.to_csv(f, columns=columnas, index=False, chunksize=1_000_000)
 
 
 if __name__ == "__main__":
