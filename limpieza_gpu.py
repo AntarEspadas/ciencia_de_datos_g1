@@ -9,6 +9,7 @@ import os
 import re
 import csv
 import argparse
+import sys
 
 COLUMNAS = ["city", "speedKMH", "uuid", "endNode", "speed", "severity", "level", "length", "roadType", "delay", "updateMillis", "pubMillis"]
 
@@ -179,7 +180,7 @@ def procesar_parcial(archivos: list[str], archivo_salida: str, columnas):
         if df is not None:
             break
         archivo = path.abspath(archivos[err])
-        print(f"No se pudo leer el archivo {archivo}")
+        print(f"No se pudo leer el archivo {archivo}", file=sys.stderr)
         archivos.pop(err)
 
     # Extraer los datos de jams y juntarlos con la fecha
