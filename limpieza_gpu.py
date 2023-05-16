@@ -139,7 +139,9 @@ def obtener_bloques_de_archivos(archivos: list[str], tam_max: int) -> list[list[
 
         # En esta caso, los archivos con tamaño menor a 50 bytes suelen contener datos basura,
         # por lo que no se les toma en cuenta
-        if tam < 50:
+        tam_min = 50
+        if tam < tam_min:
+            print(f"Ignorando archivo {path.abspath(archivo)} porque su tamaño es {tam} < {tam_min}", file=sys.stderr)
             continue
 
         nueva_suma = suma_actual + tam
