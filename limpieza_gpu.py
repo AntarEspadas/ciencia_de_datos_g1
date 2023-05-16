@@ -12,6 +12,70 @@ import argparse
 
 COLUMNAS = ["city", "speedKMH", "uuid", "endNode", "speed", "severity", "level", "length", "roadType", "delay", "updateMillis", "pubMillis"]
 
+def main():
+    """
+    Punto de entrada del programa
+    """
+
+    # Obtiene el parser de línea de comandos
+    parser = get_parser()
+    # Obtiene los argumentos de la línea de comandos
+    args = parser.parse_args()
+
+    # Lee los argumentos de línea de comandos en variables locales
+    entrada: list[str] = args.input
+    archivo_salida: str = args.output
+    tam_max: int = args.tam_bloque * 1_000_000
+    columnas: list[str] = args.columnas + ["tiempo_min", "tiempo_max", "x1", "y1", "x2", "y2"]
+
+    # Cada archivo en la lista 'entrada' es tratado como un patrón glob
+    # Se usa la función 'glob' para convertir cada patrón en una lista,
+    # obteniendo así una lista de listas, la cual es aplanada usando la
+    # función 'sum', obteniendo así una única lista de archivos
+    archivos = sum(map(glob, entrada), [])
+
+    # Obtener los archivos agrupados en bloques de, por defecto, 1.5GB
+    bloques_de_archivos = obtener_bloques_de_archivos(archivos, tam_max)
+        
+    # Crear el directorio en el que se guardará el archivo de salida,
+    # en caso de que no exista
+    out_dir = path.abspath(archivo_salida)
+    out_dir = path.dirname(out_dir)
+    os.makedirs(out_dir, exist_ok=True)
+
+    # Crea el archivo de salida y escribe los encabezados de las columnas
+    with open(archivo_salida, "w") as f:
+        csv.writer(f).writerow(columnas)
+
+    # Itera sobre los bloques de archivos. 'tqdm' es una función proveniente de
+    # la biblioteca del mismo nombre, la cual permite envolver cualquier lista
+    # e imprimir automáticamente el progreso de su iteración en la consola
+    for archivos in tqdm(bloques_de_archivos):
+        # Procesa individualmente cada bloque de archivos. Ver implementación
+        # de la función 'procesar_parcial'
+        procesar_parcial(archivos, archivo_salida, columnas)
+
+    # Una vez procesado individualmente cada bloque, se espera que el tamaño se
+    # haya reducido lo suficiente para que los datos completos quepan en memoria
+    df: pd.DataFrame = pd.read_csv(archivo_salida)
+
+    # Convertir valores de tiempo a objetos de tipo datetime
+    df["tiempo_min"] = pd.to_datetime(df["tiempo_min"])
+    df["tiempo_max"] = pd.to_datetime(df["tiempo_max"])
+
+    # Eliminar posibles duplicados, recalculando el tiempo mínimo y máximo
+    tiempos = df.groupby("uuid").agg({"tiempo_min": "min", "tiempo_max": "max"}).reset_index()
+
+    df = df.drop_duplicates("uuid")
+    df = df.drop(columns=["tiempo_min", "tiempo_max"])
+
+    df = df.merge(tiempos, how="left", on="uuid")
+
+    # Se guarda el archivo final
+    with open(archivo_salida, "w") as f:
+        df.to_csv(f, columns=columnas, index=False, chunksize=1_000_000)
+
+
 def encontrar_archivo(archivos: list[str], byte: int):
     """
     Dado la posición de un byte, encuentra dentro de una lista el archivo
@@ -164,69 +228,6 @@ def get_parser():
     parser.add_argument("--tam-bloque", "-b", default=1500, type=int, help="Los archivos se leeran en bloques del tamaño especificado. Disminuir este valor si se producen errores de memoria. Unidad: MB")
     parser.add_argument("--columnas", "-c", default=COLUMNAS, nargs="+", help="Las columnas que se de desea conservar")
     return parser
-
-def main():
-    """
-    Punto de entrada del programa
-    """
-
-    # Obtiene el parser de línea de comandos
-    parser = get_parser()
-    # Obtiene los argumentos de la línea de comandos
-    args = parser.parse_args()
-
-    # Lee los argumentos de línea de comandos en variables locales
-    entrada: list[str] = args.input
-    archivo_salida: str = args.output
-    tam_max: int = args.tam_bloque * 1_000_000
-    columnas: list[str] = args.columnas + ["tiempo_min", "tiempo_max", "x1", "y1", "x2", "y2"]
-
-    # Cada archivo en la lista 'entrada' es tratado como un patrón glob
-    # Se usa la función 'glob' para convertir cada patrón en una lista,
-    # obteniendo así una lista de listas, la cual es aplanada usando la
-    # función 'sum', obteniendo así una única lista de archivos
-    archivos = sum(map(glob, entrada), [])
-
-    # Obtener los archivos agrupados en bloques de, por defecto, 1.5GB
-    bloques_de_archivos = obtener_bloques_de_archivos(archivos, tam_max)
-        
-    # Crear el directorio en el que se guardará el archivo de salida,
-    # en caso de que no exista
-    out_dir = path.abspath(archivo_salida)
-    out_dir = path.dirname(out_dir)
-    os.makedirs(out_dir, exist_ok=True)
-
-    # Crea el archivo de salida y escribe los encabezados de las columnas
-    with open(archivo_salida, "w") as f:
-        csv.writer(f).writerow(columnas)
-
-    # Itera sobre los bloques de archivos. 'tqdm' es una función proveniente de
-    # la biblioteca del mismo nombre, la cual permite envolver cualquier lista
-    # e imprimir automáticamente el progreso de su iteración en la consola
-    for archivos in tqdm(bloques_de_archivos):
-        # Procesa individualmente cada bloque de archivos. Ver implementación
-        # de la función 'procesar_parcial'
-        procesar_parcial(archivos, archivo_salida, columnas)
-
-    # Una vez procesado individualmente cada bloque, se espera que el tamaño se
-    # haya reducido lo suficiente para que los datos completos quepan en memoria
-    df: pd.DataFrame = pd.read_csv(archivo_salida)
-
-    # Convertir valores de tiempo a objetos de tipo datetime
-    df["tiempo_min"] = pd.to_datetime(df["tiempo_min"])
-    df["tiempo_max"] = pd.to_datetime(df["tiempo_max"])
-
-    # Eliminar posibles duplicados, recalculando el tiempo mínimo y máximo
-    tiempos = df.groupby("uuid").agg({"tiempo_min": "min", "tiempo_max": "max"}).reset_index()
-
-    df = df.drop_duplicates("uuid")
-    df = df.drop(columns=["tiempo_min", "tiempo_max"])
-
-    df = df.merge(tiempos, how="left", on="uuid")
-
-    # Se guarda el archivo final
-    with open(archivo_salida, "w") as f:
-        df.to_csv(f, columns=columnas, index=False, chunksize=1_000_000)
 
 
 if __name__ == "__main__":
