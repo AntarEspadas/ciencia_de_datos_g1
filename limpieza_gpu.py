@@ -28,6 +28,7 @@ def main():
     archivo_salida: str = args.output
     tam_max: int = args.tam_bloque * 1_000_000
     columnas: list[str] = args.columnas + ["tiempo_min", "tiempo_max", "x1", "y1", "x2", "y2"]
+    verbose = args.verbose
 
     # Cada archivo en la lista 'entrada' es tratado como un patrón glob
     # Se usa la función 'glob' para convertir cada patrón en una lista,
@@ -36,7 +37,7 @@ def main():
     archivos = sum(map(glob, entrada), [])
 
     # Obtener los archivos agrupados en bloques de, por defecto, 1.5GB
-    bloques_de_archivos = obtener_bloques_de_archivos(archivos, tam_max)
+    bloques_de_archivos = obtener_bloques_de_archivos(archivos, tam_max, verbose)
         
     # Crear el directorio en el que se guardará el archivo de salida,
     # en caso de que no exista
@@ -54,7 +55,7 @@ def main():
     for archivos in tqdm(bloques_de_archivos):
         # Procesa individualmente cada bloque de archivos. Ver implementación
         # de la función 'procesar_parcial'
-        procesar_parcial(archivos, archivo_salida, columnas)
+        procesar_parcial(archivos, archivo_salida, columnas, verbose)
 
     # Una vez procesado individualmente cada bloque, se espera que el tamaño se
     # haya reducido lo suficiente para que los datos completos quepan en memoria
@@ -126,7 +127,7 @@ def leer_archivos(archivos: list[str]):
         # Usa la posición del error para encontrar el archivo en el cual se originó el error
         return None, encontrar_archivo(archivos, byte)
 
-def obtener_bloques_de_archivos(archivos: list[str], tam_max: int) -> list[list[str]]:
+def obtener_bloques_de_archivos(archivos: list[str], tam_max: int, verbose: bool) -> list[list[str]]:
     """
     Agrupa los archivos en bloques de máximo 'tam_max' bytes
     """
@@ -141,7 +142,8 @@ def obtener_bloques_de_archivos(archivos: list[str], tam_max: int) -> list[list[
         # por lo que no se les toma en cuenta
         tam_min = 50
         if tam < tam_min:
-            print(f"Ignorando archivo {path.abspath(archivo)} porque su tamaño es {tam} < {tam_min}", file=sys.stderr)
+            if verbose:
+                print(f"Ignorando archivo {path.abspath(archivo)} porque su tamaño es {tam} < {tam_min}", file=sys.stderr)
             continue
 
         nueva_suma = suma_actual + tam
@@ -157,7 +159,7 @@ def obtener_bloques_de_archivos(archivos: list[str], tam_max: int) -> list[list[
 
     return bloques_de_archivos
 
-def procesar_parcial(archivos: list[str], archivo_salida: str, columnas):
+def procesar_parcial(archivos: list[str], archivo_salida: str, columnas, verbose: bool):
     """
     Procesa un bloque de archivos.
 
@@ -182,7 +184,8 @@ def procesar_parcial(archivos: list[str], archivo_salida: str, columnas):
         if df is not None:
             break
         archivo = path.abspath(archivos[err])
-        print(f"No se pudo leer el archivo {archivo}", file=sys.stderr)
+        if verbose:
+            print(f"No se pudo leer el archivo {archivo}", file=sys.stderr)
         archivos.pop(err)
 
     # Extraer los datos de jams y juntarlos con la fecha
@@ -230,6 +233,7 @@ def get_parser():
     parser.add_argument("--output", "-o", required=True, help="Archivo de salida")
     parser.add_argument("--tam-bloque", "-b", default=1500, type=int, help="Los archivos se leeran en bloques del tamaño especificado. Disminuir este valor si se producen errores de memoria. Unidad: MB")
     parser.add_argument("--columnas", "-c", default=COLUMNAS, nargs="+", help="Las columnas que se de desea conservar")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Las columnas que se de desea conservar")
     return parser
 
 
